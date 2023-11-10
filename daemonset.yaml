@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: perf-collection
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: perf-collection
+  template:
+    metadata:
+      labels:
+        app: perf-collection
+    spec:
+      containers:
+      - name: perf-collection
+        image: mcr.microsoft.com/aks/fundamental/base-ubuntu:v0.0.11
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh","-c"]
+        args: ["cp /my-script/my-script.sh /podtmp/my-script.sh; nsenter --target 1 --mount --ut --ipc --net --pid --  ./tmp/my-script.sh"]
+        securityContext:
+          allowPrivilegeEscalation: true
+          privileged: true
+        volumeMounts:
+        - name: hostdir
+          mountPath: /podtmp
+        - name: my-script-volume
+          mountPath: /my-script
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      hostIPC: true
+      hostNetwork: true
+      hostPID: true
+      restartPolicy: Always
+      securityContext: {}
+      serviceAccount: default
+      serviceAccountName: default
+      tolerations:
+      - operator: Exists
+
+      volumes:
+      - hostPath:
+          path: /tmp
+          type: ""
+        name: hostdir
+
+      - name: my-script-volume
+        configMap:
+          name: my-script-configmap
+          defaultMode: 0744
+
+~
