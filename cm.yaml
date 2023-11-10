@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-script-configmap
+data:
+  my-script.sh: |
+    #!/bin/bash
+    set -eux -o pipefail
+    NOW=`date -u +%Y%m%d%H%M%S`
+    OUTDIR="/tmp/latency_${HOSTNAME}_${NOW}"
+    TARFILE="${OUTDIR}.tar.gz"
+    mkdir -p $OUTDIR
+
+    freq () {
+      for ((i=1; i<=$2; i++)); do
+        date -u --rfc-3339 seconds
+        grep MHz /proc/cpuinfo
+        sleep $1
+      done
+    } >>$OUTDIR/freq.log 2>>$OUTDIR/freq.err
+
+    python3 /usr/share/bcc/tools/offwaketime -m 5000 -M 50000 -K -f 120 >>$OUTDIR/offwaketime.log 2>>offwaketime.err &
+    mpstat -A 1 120 >>$OUTDIR/mpstat.log 2>>$OUTDIR/mpstat.err &
+    pidstat -rutvwd 1 120 >>$OUTDIR/pidstat.log 2>>$OUTDIR/pidstat.err &
+    pidstat -ut 1 120 >>$OUTDIR/pidstat_cpu.log 2>>$OUTDIR/pidstat_cpu.err &
+    systemd-cgtop -b -n 120 >>$OUTDIR/cgtop.log 2>>$OUTDIR/cgtop.err &
+    freq 1 120 &
+    wait
+    tar zcvf $TARFILE $OUTDIR
