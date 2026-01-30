@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: aks-batch-job
+  namespace: default
+spec:
+  template:
+    metadata:
+      labels:
+        app: batch-job
+    spec:
+      containers:
+      - name: job-container
+        image: busybox:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Starting AKS Job..."
+          echo "Job is running on node: $(hostname)"
+          echo "Current date and time: $(date)"
+          echo "Performing batch processing..."
+          sleep 10
+          echo "Job completed successfully!"
+      restartPolicy: Never
+  backoffLimit: 4
+  completions: 1
+  parallelism: 1
